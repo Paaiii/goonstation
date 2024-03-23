@@ -183,24 +183,24 @@
 
 /mob/living/intangible/aieye/verb/ai_eye_create_viewport()
 	set category = "AI Commands"
-	set name = "EXPERIMENTAL: Create Viewport"
-	set desc = "Expand your powers with Nanotransen's Viewportifier!"
+	set name = "Create Viewport"
+	set desc = "Expand your powers with Nanotrasen's Viewportifier!"
 
-	src.create_viewport("AI: Viewport")
+	src.create_viewport(VIEWPORT_ID_AI)
 
 /mob/living/intangible/blob_overmind/verb/blob_create_viewport()
 	set category = "Blob Commands"
-	set name = "EXPERIMENTAL: Create Viewport"
+	set name = "Create Viewport"
 	set desc = "Expand your powers with BlobCorp's Viewportifier!"
 
-	src.create_viewport("Blob: Viewport")
+	src.create_viewport(VIEWPORT_ID_BLOB)
 
 /mob/living/intangible/blob_overmind/death()
-	src.client?.clearViewportsByType("Blob: Viewport")
+	src.client?.clearViewportsByType(VIEWPORT_ID_BLOB)
 	.=..()
 
 /mob/living/silicon/ai/death(gibbed)
-	src.client?.clearViewportsByType("AI: Viewport")
+	src.client?.clearViewportsByType(VIEWPORT_ID_AI)
 	.=..()
 
 
@@ -208,8 +208,9 @@
 	SET_ADMIN_CAT(ADMIN_CAT_SELF)
 	set name = "Create Viewport"
 	ADMIN_ONLY
+	SHOW_VERB_DESC
 
-	var/datum/viewport/viewport = src.mob.create_viewport("Admin: Viewport", share_planes=TRUE)
+	var/datum/viewport/viewport = src.mob.create_viewport(VIEWPORT_ID_ADMIN, share_planes=TRUE)
 	viewport.handler.listens = TRUE
 
 
@@ -217,20 +218,22 @@
 	SET_ADMIN_CAT(ADMIN_CAT_SELF)
 	set name = "Create Silent Viewport"
 	ADMIN_ONLY
+	SHOW_VERB_DESC
 
-	src.mob.create_viewport("Admin: Viewport - Silent", share_planes=TRUE)
+	src.mob.create_viewport(VIEWPORT_ID_ADMIN_SILENT, share_planes=TRUE)
 
 
 /client/proc/cmd_create_viewport_following()
 	SET_ADMIN_CAT(ADMIN_CAT_SELF)
 	set name = "Create Viewport Following"
 	ADMIN_ONLY
+	SHOW_VERB_DESC
 
 	var/atom/target_atom = pick_ref(src.mob)
 	if(!target_atom || isturf(target_atom))
 		boutput(src, SPAN_ALERT("No viewport target selected."))
 		return
 
-	var/datum/viewport/viewport = src.mob.create_viewport("Admin: Viewport", title = "Following: [target_atom.name]", size=9, share_planes=TRUE)
+	var/datum/viewport/viewport = src.mob.create_viewport(VIEWPORT_ID_ADMIN, title = "Following: [target_atom.name]", size=9, share_planes=TRUE)
 	viewport.handler.listens = TRUE
 	viewport.start_following(target_atom)

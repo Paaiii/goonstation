@@ -1742,10 +1742,12 @@ var/global/icon/scanline_icon = icon('icons/effects/scanning.dmi', "scanline")
 /proc/animate_bouncy(atom/A) // little bouncy dance for admin and mentor mice, could be used for other stuff
 	if (!istype(A))
 		return
-	animate(A, pixel_y = (A.pixel_y + 4), time = 0.15 SECONDS, dir = EAST, flags=ANIMATION_PARALLEL)
-	animate(pixel_y = (A.pixel_y - 4), time = 0.15 SECONDS, dir = EAST)
-	animate(pixel_y = (A.pixel_y + 4), time = 0.15 SECONDS, dir = WEST)
-	animate(pixel_y = (A.pixel_y - 4), time = 0.15 SECONDS, dir = WEST)
+	var/initial_dir = (A.dir & (EAST|WEST)) ? A.dir : pick(EAST, WEST)
+	var/opposite_dir = turn(initial_dir, 180)
+	animate(A, pixel_y = (A.pixel_y + 4), time = 0.15 SECONDS, dir = initial_dir, flags=ANIMATION_PARALLEL)
+	animate(pixel_y = (A.pixel_y - 4), time = 0.15 SECONDS, dir = initial_dir)
+	animate(pixel_y = (A.pixel_y + 4), time = 0.15 SECONDS, dir = opposite_dir)
+	animate(pixel_y = (A.pixel_y - 4), time = 0.15 SECONDS, dir = opposite_dir)
 
 /proc/animate_wave(atom/A, waves=7) // https://secure.byond.com/docs/ref/info.html#/{notes}/filters/wave
 	if (!istype(A))
@@ -1876,3 +1878,16 @@ proc/animate_orbit(atom/orbiter, center_x = 0, center_y = 0, radius = 32, time=8
 	animate(time = time/2, pixel_y = 30, easing = CUBIC_EASING | EASE_OUT, loop = -1)
 	animate(time = time/2, pixel_y = 0, easing = CUBIC_EASING | EASE_IN, loop = -1)
 	animate_spin(thing, parallel = TRUE)
+
+/proc/animate_psy_juggle(atom/thing, duration = 2 SECONDS)
+	var/eighth_duration = duration / 8  // Divide the duration for each segment of the octagon
+	var/distance = 24  // Max distance from the center in pixels
+	animate(thing, pixel_x = distance, pixel_y = distance * 0.5, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = distance * 0.5, pixel_y = distance, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = -distance * 0.5, pixel_y = distance, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = -distance, pixel_y = distance * 0.5, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = -distance, pixel_y = -distance * 0.5, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = -distance * 0.5, pixel_y = -distance, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = distance * 0.5, pixel_y = -distance, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate(pixel_x = distance, pixel_y = -distance * 0.5, time=eighth_duration, easing = LINEAR_EASING, loop = -1)
+	animate_spin(thing, parallel = TRUE, T = 2 SECONDS)

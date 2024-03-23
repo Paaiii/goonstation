@@ -7,6 +7,13 @@
 TYPEINFO(/obj/item/device/radio)
 	mats = 3
 
+///stupid global var, if true then all radios will start "bricked"
+var/no_more_radios = FALSE
+
+proc/no_more_radio()
+	global.no_more_radios = TRUE
+	for_by_tcl(radio, /obj/item/device/radio)
+		radio.bricked = TRUE
 /obj/item/device/radio
 	name = "station bounced radio"
 	desc = "A portable, non-wearable radio for communicating over a specified frequency. Has a microphone and a speaker which can be independently toggled."
@@ -67,12 +74,15 @@ var/list/headset_channel_lookup
 		set_secure_frequencies()
 
 	src.chat_text = new(null, src)
+	src.bricked = global.no_more_radios
+	START_TRACKING
 
 /obj/item/device/radio/disposing()
 	src.patch_link = null
 	src.traitorradio  = null
 	src.secure_connections = null
 	src.secure_frequencies = null
+	STOP_TRACKING
 	..()
 
 /obj/item/device/radio/proc/set_frequency(new_frequency)
@@ -252,7 +262,7 @@ var/list/headset_channel_lookup
 	if(isnull(tooltip))
 		tooltip = src.name
 	if(tooltip)
-		. = "<div class='tooltip'>[.][SPAN_TOOLTIPTEXT("[tooltip]")]</div>"
+		. = "<div class='tooltip'>[.]<span class='tooltiptext'>[tooltip]</span></div>"
 
 
 /** Max number of radios that will show maptext for a single message.
@@ -588,7 +598,8 @@ var/list/headset_channel_lookup
 	if(!src.doesMapText && !force_radio_maptext)
 		return
 	var/maptext = generateMapText(msg, R = R, textLoc = textLoc) // if you want to simply ..() but want to override the maptext loc
-	R.show_message(type = 2, just_maptext = TRUE, assoc_maptext = maptext)
+	if(maptext)
+		R.show_message(type = 2, just_maptext = TRUE, assoc_maptext = maptext)
 
 // Hope I didn't butcher this, but I couldn't help but notice some odd stuff going on when I tried to debug radio jammers (Convair880).
 /obj/item/device/radio/proc/accept_rad(obj/item/device/radio/R as obj, message, var/datum/packet_network/radio/freq)
@@ -711,7 +722,7 @@ TYPEINFO(/obj/item/radiojammer)
 	icon_state = "beacon"
 	item_state = "signaler"
 	desc = "A small beacon that is tracked by the Teleporter Computer, allowing things to be sent to its general location."
-	burn_possible = 0
+	burn_possible = FALSE
 	anchored = ANCHORED
 
 	var/list/obj/portals_pointed_at_us
@@ -816,18 +827,14 @@ TYPEINFO(/obj/item/radiojammer)
 
 /obj/item/device/radio/electropack/attackby(obj/item/W, mob/user)
 	if (istype(W, /obj/item/clothing/head/helmet))
-		var/obj/item/assembly/shock_kit/A = new /obj/item/assembly/shock_kit( user )
+		var/obj/item/assembly/shock_kit/A = new /obj/item/assembly/shock_kit(user, W, src)
 		W.set_loc(A)
-		A.part1 = W
-		W.master = A
 		W.layer = initial(W.layer)
 		user.u_equip(W)
 		user.put_in_hand_or_drop(A)
 		src.layer = initial(src.layer)
 		user.u_equip(src)
 		src.set_loc(A)
-		A.part2 = src
-		src.master = A
 		src.add_fingerprint(user)
 	return
 
@@ -871,7 +878,7 @@ TYPEINFO(/obj/item/radiojammer)
 
 
 /obj/item/device/radio/signaler
-	name = "\improper Remote Signaling Device"
+	name = "remote signaler" //US spelling :vomit: but we should be consistent
 	icon_state = "signaller"
 	item_state = "signaler"
 	var/code = 30

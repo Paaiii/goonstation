@@ -52,7 +52,7 @@
 
 	burn_point = 2500
 	burn_output = 2500
-	burn_possible = 1
+	burn_possible = TRUE
 	health = 10
 
 	New(var/loc, var/obj/object)
@@ -400,7 +400,7 @@
 						else
 							src.modify.access += access_type
 						src.modify.name = "[src.modify.registered]'s ID Card ([src.modify.assignment])"
-						logTheThing(LOG_STATION, usr, "[access_allowed ? "adds" : "removes"] [get_access_desc(access_type)] access to the ID card (<b>[src.modify.registered]</b>).")
+						logTheThing(LOG_STATION, usr, "[access_allowed ? "adds" : "removes"] [get_access_desc(access_type)] access to the ID card (<b>[src.modify.registered]</b>) using [src.scan.registered]'s ID.")
 
 			if ("pronouns")
 				if (src.authenticated && src.modify)

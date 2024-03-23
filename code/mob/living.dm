@@ -15,7 +15,7 @@
 
 	var/ai_busy = 0
 	var/ai_laststep = 0
-	var/ai_state = 0
+	var/ai_state = AI_PASSIVE
 	var/ai_threatened = 0
 	var/ai_movedelay = 6
 	var/ai_lastaction = 0
@@ -196,7 +196,10 @@
 	src.remove_ailments()
 	src.lastgasp(allow_dead = TRUE)
 	if (src.ai) src.ai.disable()
-	if (src.key) statlog_death(src, gibbed)
+	if (src.key)
+		var/datum/eventRecord/Death/deathEvent = new
+		deathEvent.buildAndSend(src, gibbed)
+	#ifndef NO_SHUTTLE_CALLS
 	if (src.client && ticker.round_elapsed_ticks >= 12000 && VALID_MOB(src))
 		var/num_players = 0
 		for(var/client/C)
@@ -211,6 +214,7 @@
 					boutput(world, SPAN_NOTICE("<B>Alert: The emergency shuttle has been called.</B>"))
 					boutput(world, SPAN_NOTICE("- - - <b>Reason:</b> Crew shortages and fatalities."))
 					boutput(world, SPAN_NOTICE("<B>It will arrive in [round(emergency_shuttle.timeleft()/60)] minutes.</B>"))
+	#endif
 	#undef VALID_MOB
 
 	// Active if XMAS or manually toggled.
@@ -684,6 +688,11 @@
 	message = replacetext(message, shittery_regex, "")
 	message = strip_html(trim(copytext(sanitize(message), 1, MAX_MESSAGE_LEN)))
 
+	var/client/my_client = src.client
+	if(isAI(src))
+		var/mob/living/silicon/ai/AI = src
+		my_client ||= AI.eyecam?.client
+
 	if (!message)
 		return
 
@@ -717,7 +726,7 @@
 		game_stats.ScanText(message)
 #endif
 
-	if (src.client && src.client.ismuted())
+	if (my_client?.ismuted())
 		boutput(src, "<b class='alert'>You are currently muted and may not speak.</b>")
 		return
 
@@ -899,7 +908,7 @@
 		if ((n >= 0 && n <= 20) || n == 420)
 			speech_bubble.icon_state = "[n]"
 
-	if(src.client)
+	if(my_client)
 		if(singing)
 			phrase_log.log_phrase("sing", message, user = src, strip_html = TRUE)
 		else if(message_mode)
@@ -957,7 +966,7 @@
 
 	//Blobchat handling
 	if (src.mob_flags & SPEECH_BLOB)
-		message = html_encode(src.say_quote(message))
+		message = src.say_quote(message)
 		var/rendered = "<span class='game blobsay'>"
 		rendered += "[SPAN_PREFIX("BLOB:")] "
 		rendered += "<span class='name text-normal' data-ctx='\ref[src.mind]'>[src.get_heard_name()]</span> "
@@ -1075,7 +1084,8 @@
 		listening = all_hearers(message_range, say_location)
 		if (ismob(say_location))
 			for(var/mob/M in say_location)
-				listening |= M
+				if(!istype(M, /mob/dead/target_observer)) // theres already handling for relaying chat to observers!!
+					listening |= M
 			for (var/obj/item/W in say_location) // let the skeleton skulls in the bag / pockets hear the nerd
 				if (istype(W,/obj/item/organ/head))
 					var/obj/item/organ/head/H = W
@@ -1185,7 +1195,7 @@
 			oscillate_colors(chat_text, maptext_animation_colors)
 
 		if(chat_text)
-			chat_text.measure(src.client)
+			chat_text.measure(my_client)
 			var/obj/chat_maptext_holder/holder = src.chat_text
 			if (is_decapitated_skeleton) // for skeleton heads
 				var/mob/living/carbon/human/H = src
@@ -1230,7 +1240,7 @@
 			(isintangible(M) && (M in hearers)) || \
 			( \
 				(!isturf(say_location.loc) && (say_location.loc == M.loc || (say_location in M))) && \
-				!(M in heard_a) && \
+				!(M in heard_a) && !(M in heard_b) &&\
 				!istype(M, /mob/dead/target_observer) && \
 				M != src \
 			) \
@@ -1251,7 +1261,7 @@
 					else
 						// if we're a critter or on a different z level, and we don't have a client, they probably don't care
 						// we do want to show station monkey speech etc, but not transposed scientists and trench monkeys and whatever
-						if ((!ishuman(src) || (get_z(src) != get_z(M))) && !src.client)
+						if ((!ishuman(src) || (get_z(src) != get_z(M))) && !my_client)
 							return
 						M.show_message(thisR, 2, assoc_maptext = chat_text)
 			else if(istype(M, /mob/zoldorf))
@@ -1451,7 +1461,7 @@
 
 	if (thing)
 
-		if (M.client && tgui_alert(M, "[src] offers [his_or_her(src)] [thing] to you. Do you accept it?", "Accept given [thing]", list("Yes", "No"), timeout = 10 SECONDS) == "Yes" || M.ai_active)
+		if (M.client && tgui_alert(M, "[src] offers [his_or_her(src)] [thing] to you. Do you accept it?", "Accept given [thing]", list("Yes", "No"), timeout = 10 SECONDS, autofocus = FALSE) == "Yes" || M.ai_active)
 			if (!thing || !M || !(BOUNDS_DIST(src, M) == 0) || thing.loc != src || src.restrained())
 				return
 			src.u_equip(thing)
@@ -1499,7 +1509,7 @@
 			return TRUE //cancel further resist code if needed
 
 	if (src.getStatusDuration("burning"))
-		if (!actions.hasAction(src, "fire_roll"))
+		if (!actions.hasAction(src, /datum/action/fire_roll))
 			src.last_resist = world.time + 25
 			actions.start(new/datum/action/fire_roll(), src)
 		else
@@ -1912,6 +1922,17 @@
 			playsound(src.loc, 'sound/impact_sounds/Energy_Hit_1.ogg',80, 0.1, 0, 3)
 		return 0
 
+	if (!P.was_pointblank && HAS_ATOM_PROPERTY(src, PROP_MOB_TOYREFLECTPROT) && istype(P.proj_data,/datum/projectile/bullet/foamdart))
+		var/obj/item/equipped = src.equipped()
+		var/obj/projectile/Q = shoot_reflected_bounce(P, src)
+		if (!Q)
+			CRASH("Failed to initialize reflected projectile from original projectile [identify_object(P)] hitting mob [identify_object(src)]")
+		else
+			P.die()
+			src.visible_message("<span class='alert'>[src] reflects [Q.name] with [equipped]!</span>")
+			playsound(src.loc, 'sound/effects/syringeproj.ogg',80, 0.1, 0, 3)
+		return 0
+
 	if (P?.proj_data?.is_magical  && src?.traitHolder?.hasTrait("training_chaplain"))
 		src.visible_message(SPAN_ALERT("A divine light absorbs the magical projectile!"))
 		playsound(src.loc, 'sound/impact_sounds/Energy_Hit_1.ogg', 40, 1)
@@ -1946,11 +1967,11 @@
 	var/rangedprot_base = get_ranged_protection() //will be 1 unless overridden
 	if (P.proj_data) //Wire: Fix for: Cannot read null.damage_type
 		var/rangedprot_mod = max(rangedprot_base*(1-P.proj_data.armor_ignored),1)
-
-		if (rangedprot_mod > 1)
-			armor_msg = ", but your armor softens the hit!"
-		else if(rangedprot_base > 1)
-			armor_msg = ", but [P] pierces through your armor!"
+		if (damage > 0) //armour doesn't help against stuns
+			if (rangedprot_mod > 1)
+				armor_msg = ", but your armor softens the hit!"
+			else if(rangedprot_base > 1)
+				armor_msg = ", but [P] pierces through your armor!"
 
 
 		var/list/shield_amt = list()
@@ -2216,7 +2237,7 @@
 
 /mob/living/get_desc(dist, mob/user)
 	. = ..()
-	if (isdead(src) && src.last_words && (user?.traitHolder?.hasTrait("training_chaplain") || istype(user, /mob/dead/observer)))
+	if (isdead(src) && src.last_words && (user?.traitHolder?.hasTrait("training_chaplain") || istype(user, /mob/dead)))
 		. += "<br><span class='deadsay' style='font-size:1.2em;font-weight:bold;'>[capitalize(his_or_her(src))] last words were: \"[src.last_words]\".</span>"
 
 /mob/living/lastgasp(allow_dead=FALSE, grunt=null)
@@ -2272,4 +2293,13 @@
 
 /// Returns the rate of blood to absorb from the reagent holder per Life()
 /mob/living/proc/get_blood_absorption_rate()
-	return 1 // that's the standard absorption rate
+	return 1 + GET_ATOM_PROPERTY(src, PROP_MOB_BLOOD_ABSORPTION_RATE) // that's the standard absorption rate
+
+/mob/living/was_built_from_frame(mob/user, newly_built)
+	. = ..()
+	src.is_npc = TRUE
+
+/mob/living/proc/apply_roundstart_events()
+	for(var/datum/random_event/start/until_playing/RE in random_events.delayed_start)
+		if(RE.include_latejoin && RE.is_crew_affected(src))
+			RE.apply_to_player(src)

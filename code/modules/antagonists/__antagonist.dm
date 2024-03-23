@@ -21,6 +21,8 @@ ABSTRACT_TYPE(/datum/antagonist)
 	var/remove_on_death = FALSE
 	/// If TRUE, the antag status will be removed when the person is cloned (zombies etc.)
 	var/remove_on_clone = FALSE
+	/// If TRUE, the equipment is not removed on death. Only works if remove_on_death is TRUE.
+	var/keep_equipment_on_death = FALSE
 
 
 	/// The mind of the player that that this antagonist is assigned to.
@@ -75,6 +77,21 @@ ABSTRACT_TYPE(/datum/antagonist)
 		RegisterSignal(src.owner, COMSIG_MIND_ATTACH_TO_MOB, PROC_REF(mind_attach))
 		RegisterSignal(src.owner, COMSIG_MIND_DETACH_FROM_MOB, PROC_REF(mind_detach))
 		src.owner.antagonists.Add(src)
+
+	proc/transfer_to(datum/mind/target, take_gear, source, silent = FALSE)
+		remove_self(take_gear, source)
+		owner.former_antagonist_roles.Add(owner.special_role)
+		owner.special_role = null // this isn't ideal, since the system should support multiple antagonists. once special_role is worked around, this won't be an issue
+		UnregisterSignal(src.owner, COMSIG_MIND_ATTACH_TO_MOB)
+		UnregisterSignal(src.owner, COMSIG_MIND_DETACH_FROM_MOB)
+
+		src.owner = target
+		src.owner.special_role = id
+		src.setup_antagonist(FALSE, FALSE, FALSE, silent, source, FALSE)
+		src.owner.antagonists.Add(src)
+		RegisterSignal(src.owner, COMSIG_MIND_ATTACH_TO_MOB, PROC_REF(mind_attach))
+		RegisterSignal(src.owner, COMSIG_MIND_DETACH_FROM_MOB, PROC_REF(mind_detach))
+
 
 	disposing()
 		if (owner && !src.pseudo)
@@ -132,6 +149,8 @@ ABSTRACT_TYPE(/datum/antagonist)
 
 		if (do_equip)
 			src.give_equipment()
+			if (!src.uses_pref_name)
+				src.owner.current.bioHolder.mobAppearance.flavor_text = null
 		else
 			src.alt_equipment()
 
@@ -161,14 +180,18 @@ ABSTRACT_TYPE(/datum/antagonist)
 			src.announce()
 			src.do_popup()
 
+	proc/get_antag_icon_image()
+		RETURN_TYPE(/image)
+		var/image/image = image('icons/mob/antag_overlays.dmi', icon_state = src.antagonist_icon)
+		image.appearance_flags = PIXEL_SCALE | RESET_ALPHA | RESET_COLOR | RESET_TRANSFORM | KEEP_APART
+		. = image
+
 	proc/add_to_image_groups()
 		if (!src.antagonist_icon)
 			return
 
-		var/image/image = image('icons/mob/antag_overlays.dmi', icon_state = src.antagonist_icon)
-		image.appearance_flags = PIXEL_SCALE | RESET_ALPHA | RESET_COLOR | RESET_TRANSFORM
 		var/datum/client_image_group/antagonist_image_group = get_image_group(CLIENT_IMAGE_GROUP_ALL_ANTAGONISTS)
-		antagonist_image_group.add_mind_mob_overlay(src.owner, image)
+		antagonist_image_group.add_mind_mob_overlay(src.owner, get_antag_icon_image())
 
 		if (antagonists_see_each_other)
 			antagonist_image_group.add_mind(src.owner)
@@ -198,6 +221,10 @@ ABSTRACT_TYPE(/datum/antagonist)
 
 	/// Generate objectives for the antagonist and assign them to the mind.
 	proc/assign_objectives()
+		return
+
+	/// Handle this antagonist entering cryogenic storage permanently
+	proc/handle_perma_cryo()
 		return
 
 	/// Remove objectives from the antagonist and the mind.
@@ -255,7 +282,7 @@ ABSTRACT_TYPE(/datum/antagonist)
 
 	proc/on_death()
 		if (src.remove_on_death)
-			src.owner.remove_antagonist(src, ANTAGONIST_REMOVAL_SOURCE_DEATH)
+			src.owner.remove_antagonist(src, ANTAGONIST_REMOVAL_SOURCE_DEATH, !keep_equipment_on_death)
 
 	proc/mind_attach(source, mob/new_mob, mob/old_mob)
 		if ((issilicon(new_mob) || isAI(new_mob)) && !(issilicon(old_mob) || isAI(old_mob)))

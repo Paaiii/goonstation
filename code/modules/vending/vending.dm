@@ -248,6 +248,20 @@ ADMIN_INTERACT_PROCS(/obj/machinery/vending, proc/throw_item, proc/admin_command
 		else
 			return src.loc
 
+	HELP_MESSAGE_OVERRIDE({""})
+	get_help_message(dist, mob/user)
+		if (src.status & BROKEN) // Vendor is tipped
+			. += {"You can use a <b>crowbar</b> to lift the machine back up.\n"}
+			return // No need to show other tooltips
+		if ((src.can_hack) && (src.panel_open)) // Wire panel open for hacking
+			. += {"You can use a <b>multitool</b> to pulse and <b>wirecutters</b> to cut wires in the wire panel.\n"}
+			return // No need to clutter help text with other tips
+		if (src.acceptcard)
+			. += {"You can swipe your ID and enter your pin to pay for items.\n"}
+		if ((src.can_hack) && (!src.panel_open))
+			. += {"You can use a <b>screwdriver</b> to open the maintenance panel.\n"}
+		. += {"You can use a <b>crowbar</b> to rotate the machine.\n"}
+
 #define WIRE_EXTEND 1
 #define WIRE_SCANID 2
 #define WIRE_SHOCK 3
@@ -923,9 +937,9 @@ ADMIN_INTERACT_PROCS(/obj/machinery/vending, proc/throw_item, proc/admin_command
 		return
 
 	if (src.glitchy_slogans)
-		src.audible_message("<span class='game say'>[SPAN_NAME("[src]")] beeps,</span> \"[text_out]\"", 2, assoc_maptext = slogan_text)
+		src.audible_message("[SPAN_SAY("[SPAN_NAME("[src]")] beeps,")] \"[text_out]\"", assoc_maptext = slogan_text)
 	else
-		src.audible_message(SPAN_SUBTLE("<span class='game say'>[SPAN_NAME("[src]")] beeps, \"[text_out]\"</span>"), 2, assoc_maptext = slogan_text)
+		src.audible_message(SPAN_SUBTLE(SPAN_SAY("[SPAN_NAME("[src]")] beeps, \"[text_out]\"")), assoc_maptext = slogan_text)
 
 	return
 
@@ -971,7 +985,7 @@ ADMIN_INTERACT_PROCS(/obj/machinery/vending, proc/throw_item, proc/admin_command
 //			src.icon_state = "[initial(icon_state)]-fallen"
 	if (istype(victim) && vicTurf && (BOUNDS_DIST(vicTurf, src) == 0))
 		victim.do_disorient(80, 5 SECONDS, 5 SECONDS, 0, 3 SECONDS, FALSE, DISORIENT_NONE, FALSE)
-		src.visible_message("<b><span class='alert'>[src.name] tips over onto [victim]!</span></b>")
+		src.visible_message("<b>[SPAN_ALERT("[src.name] tips over onto [victim]!")]</b>")
 		logTheThing(LOG_COMBAT, src, "falls on [constructTarget(victim,"combat")] at [log_loc(vicTurf)].")
 		victim.force_laydown_standup()
 		victim.set_loc(vicTurf)
@@ -980,7 +994,7 @@ ADMIN_INTERACT_PROCS(/obj/machinery/vending, proc/throw_item, proc/admin_command
 		src.set_loc(vicTurf)
 		random_brute_damage(victim, rand(20,40),1)
 	else
-		src.visible_message("<b><span class='alert'>[src.name] tips over!</span></b>")
+		src.visible_message("<b>[SPAN_ALERT("[src.name] tips over!")]</b>")
 
 	src.power_change()
 	src.anchored = UNANCHORED
@@ -1179,7 +1193,6 @@ ADMIN_INTERACT_PROCS(/obj/machinery/vending, proc/throw_item, proc/admin_command
 /datum/action/bar/icon/right_vendor //This is used when you try to remove someone elses handcuffs.
 	duration = 5 SECONDS
 	interrupt_flags = INTERRUPT_MOVE | INTERRUPT_ACT | INTERRUPT_STUNNED | INTERRUPT_ACTION
-	id = "right_vendor"
 	icon = 'icons/obj/items/tools/crowbar.dmi'
 	icon_state = "crowbar"
 	var/obj/machinery/vending/vendor = null
@@ -1634,6 +1647,7 @@ ABSTRACT_TYPE(/obj/machinery/vending/cola)
 		product_list += new/datum/data/vending_product(/obj/item/mechanics/wifisplit, 30)
 		product_list += new/datum/data/vending_product(/obj/item/mechanics/screen_canvas, 30)
 		product_list += new/datum/data/vending_product(/obj/item/mechanics/message_sign, 10)
+		product_list += new/datum/data/vending_product(/obj/item/mechanics/hangman, 10)
 /obj/machinery/vending/mechanics/attackby(obj/item/W, mob/user)
 	if(!istype(W,/obj/item/mechanics))
 		..()
@@ -1822,6 +1836,7 @@ ABSTRACT_TYPE(/obj/machinery/vending/cola)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/drinkingglass/icing, 3)
 		product_list += new/datum/data/vending_product(/obj/item/kitchen/chopsticks_package, 5)
 		product_list += new/datum/data/vending_product(/obj/item/plate/tray, 3)
+		product_list += new/datum/data/vending_product(/obj/item/plate/cooling_rack, 3)
 		product_list += new/datum/data/vending_product(/obj/surgery_tray/kitchen_island, 2)
 		product_list += new/datum/data/vending_product(/obj/item/storage/lunchbox, 12)
 		product_list += new/datum/data/vending_product(/obj/item/ladle, 1)
@@ -2746,6 +2761,7 @@ TYPEINFO(/obj/machinery/vending/monkey)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/vodka, 4)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/tequila, 4)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/wine, 4)
+		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/wine/white, 4)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/cider, 4)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/mead, 4)
 		product_list += new/datum/data/vending_product(/obj/item/reagent_containers/food/drinks/bottle/gin, 4)
@@ -3120,6 +3136,13 @@ ABSTRACT_TYPE(/obj/machinery/vending/jobclothing)
 	ex_act(severity)
 		. = ..()
 
+/obj/machinery/vending/air_vendor/plasma/pod_wars
+	air_cost = 0
+	can_fall = FALSE
+	can_hack = FALSE
+
+	ex_act(severity)
+		. = ..()
 /obj/machinery/vending/jobclothing/security
 	name = "Security Apparel"
 	desc = "A vending machine that vends Security clothing."
@@ -3249,7 +3272,7 @@ ABSTRACT_TYPE(/obj/machinery/vending/jobclothing)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/under/rank/orangeoveralls/yellow, 2)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/wintercoat/engineering, 4)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/hi_vis, 4)
-		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/fire, 2)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/hazard/fire, 2)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/mask/gas, 6)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/gloves/black, 2)
 		product_list += new/datum/data/vending_product(/obj/item/clothing/gloves/yellow/unsulated, 2) //heh
@@ -3460,3 +3483,58 @@ ABSTRACT_TYPE(/obj/machinery/vending/jobclothing)
 	power_change()
 		..()
 		src.UpdateIcon()
+
+/obj/machinery/vending/chapel
+	name = "Deus Ex Machina"
+	desc = "For all of your religious needs."
+	icon_state = "chapvend"
+	icon_panel = "chapvend-panel"
+	icon_off = "chapvend-off"
+	icon_broken = "chapvend-broken"
+	icon_fallen = "chapvend-fallen"
+	req_access = list(access_chapel_office)
+
+	create_products(restocked)
+		..()
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/light_robes, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/lighthat, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/burned_robes, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/mask/burnedcultmask, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/green_robes, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/mask/greencultmask, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/nature_robes, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/bushhat, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/gimmick/weirdo, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/weirdohat, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/atheist, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/rabbi, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/siropa_robe, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/buddhist, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/muslim, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/adeptus, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/rabbihat, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/formal_turban, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/turban, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/shoes/sandal/magic, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/under/misc/chaplain/nun, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/head/nunhood, 1)
+		product_list += new/datum/data/vending_product(/obj/item/clothing/suit/flockcultist, 1)
+		product_list += new/datum/data/vending_product(/obj/item/storage/box/clothing/witchfinder, 1)
+		product_list += new/datum/data/vending_product(/obj/item/storage/box/clothing/chaplain, 1)
+		product_list += new/datum/data/vending_product(/obj/item/storage/box/holywaterkit, 1)
+		product_list += new/datum/data/vending_product(/obj/item/swingsignfolded, 1)
+		product_list += new/datum/data/vending_product(/obj/item/scripture/eyehb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/bluehb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/bluewhitehb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/burnedhb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/clownhb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/eyedarkhb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/greenhb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/purplehb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/redwhitehb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/skeletonhb, 1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/xhb, 1 )
+
+		product_list += new/datum/data/vending_product(/obj/item/scripture/reddarkhb, 1, hidden=1 )
+		product_list += new/datum/data/vending_product(/obj/item/scripture/cluwnehb, 1, hidden=1,)

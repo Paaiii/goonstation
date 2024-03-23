@@ -313,7 +313,7 @@
 			var/mail_amount = ceil(alive_players * (0.25 * (adjustment / (7.5 MINUTES))))
 			logTheThing(LOG_STATION, null, "Mail: [alive_players] player\s, generating [mail_amount] pieces of mail. Time since last: [round(adjustment / 10)] seconds")
 			if (alive_players >= 1)
-				var/obj/storage/crate/wooden/mail_crate = new
+				var/obj/storage/crate/mail/mail_crate = new
 				mail_crate.name = "mail box"
 				mail_crate.desc = "Hopefully this mail gets delivered, or people might go postal."
 				var/list/created_mail = create_random_mail(mail_crate, how_many = mail_amount)
@@ -731,7 +731,8 @@
 /client/proc/cmd_modify_market_variables()
 	SET_ADMIN_CAT(ADMIN_CAT_DEBUG)
 	set name = "Edit Market Variables"
-
+	ADMIN_ONLY
+	SHOW_VERB_DESC
 	if (shippingmarket == null) boutput(src, "UH OH!")
 	else src.debug_variables(shippingmarket)
 
@@ -739,7 +740,8 @@
 	SET_ADMIN_CAT(ADMIN_CAT_DEBUG)
 	set name = "Financial Info"
 	set desc = "Shows budget variables and current market prices."
-
+	ADMIN_ONLY
+	SHOW_VERB_DESC
 	var/payroll = 0
 	var/totalfunds = wagesystem.station_budget + wagesystem.research_budget + wagesystem.shipping_budget
 	for(var/datum/db_record/R as anything in data_core.bank.records)
@@ -780,7 +782,8 @@
 	SET_ADMIN_CAT(ADMIN_CAT_DEBUG)
 	set name = "Alter Budget"
 	set desc = "Add to or subtract from a budget."
-
+	ADMIN_ONLY
+	SHOW_VERB_DESC
 	var/trans = input("Which budget?", "Budgeting", null, null) in list("Payroll", "Shipping", "Research")
 	if (!trans) return
 

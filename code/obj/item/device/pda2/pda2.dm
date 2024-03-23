@@ -11,6 +11,7 @@
 	flags = FPRINT | TABLEPASS
 	c_flags = ONBELT
 	wear_layer = MOB_BELT_LAYER
+	force = 3
 	var/obj/item/card/id/ID_card = null // slap an ID card into that thang
 	var/obj/item/pen = null // slap a pen into that thang
 	var/registered = null // so we don't need to replace all the dang checks for ID cards
@@ -377,6 +378,7 @@
 		if(ismob(src.loc))
 			var/mob/mob = src.loc
 			get_all_character_setup_ringtones()
+
 			if(mob.client && (mob.client.preferences.pda_ringtone_index in selectable_ringtones) && mob.client?.preferences.pda_ringtone_index != "Two-Beep")
 				src.set_ringtone(selectable_ringtones[mob.client.preferences.pda_ringtone_index], FALSE, FALSE, "main", null, FALSE)
 				var/rtone_program = src.ringtone2program(src.r_tone)

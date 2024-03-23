@@ -818,7 +818,8 @@ Returns:
 	SET_ADMIN_CAT(ADMIN_CAT_DEBUG)
 	set name = "Test Cinematic camera"
 	set desc="Test Cinematic camera"
-
+	USR_ADMIN_ONLY
+	SHOW_VERB_DESC
 	var/mob/M = usr
 	var/datum/targetable/cincam/R = new()
 	M.targeting_ability = R
@@ -1152,7 +1153,6 @@ Returns:
 		return attackDir
 
 /datum/action/bar/private/icon/daggerStab
-	id = "daggerStab"
 	interrupt_flags = INTERRUPT_MOVE | INTERRUPT_STUNNED | INTERRUPT_ACTION
 	icon = 'icons/obj/items/weapons.dmi'
 	icon_state = "cdagger"
@@ -1638,6 +1638,8 @@ Returns:
 	SET_ADMIN_CAT(ADMIN_CAT_FUN)
 	set name = "Pixel explosion mode"
 	set desc = "Enter pixel explosion mode."
+	USR_ADMIN_ONLY
+	SHOW_VERB_DESC
 	alert("Clicking on things will now explode them into pixels!")
 	pixelmagic(mode == "explode")
 
@@ -1749,7 +1751,8 @@ Returns:
 	SET_ADMIN_CAT(ADMIN_CAT_FUN)
 	set name = "Turn off pixel explosion mode"
 	set desc = "Turns off pixel explosion mode."
-
+	USR_ADMIN_ONLY
+	SHOW_VERB_DESC
 	var/mob/M = usr
 	if (istype(M.targeting_ability, /datum/targetable/pixelpicker))
 		var/datum/targetable/pixelpicker/pixel_picker = M.targeting_ability
@@ -2795,6 +2798,7 @@ Returns:
 	set popup_menu = 0
 
 	ADMIN_ONLY
+	SHOW_VERB_DESC
 
 	var/mob/M = src.mob
 	if (istype(M))

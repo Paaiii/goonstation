@@ -23,7 +23,6 @@ TYPEINFO(/obj/item/sword)
 	name = "cyalume saber"
 	icon = 'icons/obj/items/weapons.dmi'
 	icon_state = "sword0"
-	uses_multiple_icon_states = 1
 	inhand_image_icon = 'icons/mob/inhand/hand_cswords.dmi'
 	item_state = "sword0"
 	var/active = 0
@@ -108,7 +107,7 @@ TYPEINFO(/obj/item/sword)
 		light_c = src.AddComponent(/datum/component/loctargeting/simple_light, r, g, b, 150)
 		light_c.update(0)
 		src.setItemSpecial(/datum/item_special/swipe/csaber)
-		AddComponent(/datum/component/itemblock/saberblock, PROC_REF(can_reflect), PROC_REF(get_reflect_color))
+		AddComponent(/datum/component/itemblock/reflect/saberblock, PROC_REF(can_reflect), PROC_REF(get_reflect_color))
 		BLOCK_SETUP(BLOCK_SWORD)
 
 /obj/item/sword/proc/can_reflect()
@@ -724,7 +723,6 @@ TYPEINFO(/obj/item/sword/pink/angel)
 	icon_state = "quarterstaff"
 	item_state = "quarterstaff"
 	inhand_image_icon = 'icons/mob/inhand/hand_weapons.dmi'
-	uses_multiple_icon_states = 1
 	force = 13
 	throwforce = 6
 	throw_range = 5
@@ -800,6 +798,7 @@ TYPEINFO(/obj/item/sword/pink/angel)
 	tool_flags = TOOL_CUTTING
 	hit_type = DAMAGE_STAB
 	hitsound = 'sound/impact_sounds/Flesh_Stab_1.ogg'
+	c_flags = ONBELT
 	var/makemeat = 1
 	HELP_MESSAGE_OVERRIDE({"Throw the knife at someone for a guaranteed short stun. Use the knife on a dead body to instantly turn it into meat."})
 
@@ -903,7 +902,6 @@ TYPEINFO(/obj/item/sword/pink/angel)
 	desc = "An energised battle axe. The handle bears the insignia of the Terra Nivium company."
 	icon = 'icons/obj/items/weapons.dmi'
 	icon_state = "axe0"
-	uses_multiple_icon_states = 1
 	inhand_image_icon = 'icons/mob/inhand/hand_weapons.dmi'
 	var/active = 0
 	hit_type = DAMAGE_CUT
@@ -1103,6 +1101,72 @@ TYPEINFO(/obj/item/bat)
 			hit_type = DAMAGE_CUT
 			hitsound = 'sound/impact_sounds/Blade_Small_Bloody.ogg'
 		return ..()
+
+/obj/item/switchblade
+	name = "switchblade"
+	desc = "Spring-loaded and therefore completely illegal in Space England."
+	inhand_image_icon = 'icons/mob/inhand/hand_food.dmi'
+	item_state = ""
+	icon = 'icons/obj/items/weapons.dmi'
+	icon_state = "switchblade-idle"
+	hit_type = DAMAGE_BLUNT
+	force = 3
+	throwforce = 7
+	stamina_damage = 5
+	stamina_cost = 1
+	event_handler_flags = USE_GRAB_CHOKE
+	special_grab = /obj/item/grab
+	stamina_crit_chance = 5
+	var/active = FALSE
+	w_class = W_CLASS_SMALL
+	HELP_MESSAGE_OVERRIDE({"This knife can be concealed in clothing by hitting worn clothes with it, do the *snap emote to retrieve it.\n
+	While unfolded, using this weapon's special attack grants increased critical chance & bleed effects."})
+
+	attack_self(mob/user)
+		toggle_active(user)
+		return ..()
+
+	proc/toggle_active(mob/user)
+		if (!active)
+			hitsound = 'sound/impact_sounds/Blade_Small_Bloody.ogg'
+			user.visible_message("<span class='combat bold'>[user] flips \the [src] open!</span>")
+			w_class = W_CLASS_NORMAL
+			active = TRUE
+			tool_flags = TOOL_CUTTING
+			item_state = "knife"
+			src.setItemSpecial(/datum/item_special/simple/bloodystab)
+			icon_state = "switchblade-open"
+			hit_type = DAMAGE_CUT
+			force = 10
+			stamina_crit_chance = 33
+			playsound(user, 'sound/items/blade_pull.ogg', 60, TRUE)
+		else if (!chokehold)
+			hitsound = 'sound/impact_sounds/Generic_Hit_1.ogg'
+			user.visible_message("<span class='combat bold'>[user] folds \the [src].</span>")
+			w_class = W_CLASS_SMALL
+			active = FALSE
+			item_state = ""
+			tool_flags = 0
+			src.setItemSpecial(/datum/item_special/simple)
+			icon_state = "switchblade-close"
+			hit_type = DAMAGE_BLUNT
+			stamina_crit_chance = 5
+			force = 3
+			playsound(user, 'sound/machines/heater_off.ogg', 40, TRUE)
+		user.update_inhands()
+		tooltip_rebuild = TRUE
+
+	afterattack(obj/O as obj, mob/user as mob)
+		if (O.loc == user && istype(O, /obj/item/clothing))
+			if (active)
+				toggle_active(user)
+			icon_state = "switchblade-idle"
+			boutput(user, "<span class='hint'>You hide the [src] inside \the [O]. (Use the snap emote while wearing the clothing item to retrieve it.)</span>")
+			user.u_equip(src)
+			src.set_loc(O)
+			src.dropped(user)
+		else
+			..()
 /////////////////////////////////////////////////// Ban me ////////////////////////////////////////////
 
 /obj/item/banme
@@ -1433,7 +1497,6 @@ TYPEINFO(/obj/item/swords/captain)
 	icon = 'icons/obj/items/weapons.dmi'
 	inhand_image_icon = 'icons/mob/inhand/hand_weapons.dmi'
 	wear_layer = MOB_SHEATH_LAYER
-	uses_multiple_icon_states = 1
 	hit_type = DAMAGE_BLUNT
 	force = 5 // can do a little more damage, as a treat
 	throwforce = 5
@@ -1759,7 +1822,6 @@ obj/item/whetstone
 	pickup_sfx = 'sound/weapons/hadar_pickup.ogg'
 	hitsound = 'sound/weapons/hadar_impact.ogg'
 	two_handed = 1
-	uses_multiple_icon_states = 1
 
 	var/stage = STAGE_ONE
 	var/mode = SWIPE_MODE
@@ -1768,12 +1830,12 @@ obj/item/whetstone
 	var/stab_color = "#FF0000"
 
 	New()
-		..()
 		START_TRACKING_CAT(TR_CAT_NUKE_OP_STYLE)
+		..()
 		src.AddComponent(/datum/component/bloodflick)
 		src.setItemSpecial(/datum/item_special/swipe)
 		src.update_special_color()
-		AddComponent(/datum/component/itemblock/saberblock, null, PROC_REF(get_reflect_color))
+		AddComponent(/datum/component/itemblock/reflect/saberblock, null, PROC_REF(get_reflect_color))
 		BLOCK_SETUP(BLOCK_SWORD)
 
 	disposing()

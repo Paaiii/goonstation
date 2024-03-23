@@ -209,7 +209,7 @@ TYPEINFO(/obj/item/camera_film/large)
 	tooltip_flags = REBUILD_DIST
 	burn_point = 220
 	burn_output = 900
-	burn_possible = 2
+	burn_possible = TRUE
 
 	New(location, var/image/IM, var/icon/IC, var/nname, var/ndesc)
 		..(location)
@@ -260,6 +260,7 @@ TYPEINFO(/obj/item/camera_film/large)
 		var/signwrite = input(user, "Sign or Write?", null, null) as null|anything in list("sign","write")
 		var/t = input(user, "What do you want to [signwrite]?", null, null) as null|text
 		t = copytext(html_encode(t), 1, MAX_MESSAGE_LEN)
+		logTheThing(LOG_STATION, user, "[signwrite]s '[t]' on [src]")
 		if(t)
 			if(signwrite == "sign")
 				var/image/signature = image(icon='icons/misc/photo_writing.dmi',icon_state="[signwrite]")
